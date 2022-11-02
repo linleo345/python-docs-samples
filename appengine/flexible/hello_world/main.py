@@ -13,17 +13,116 @@
 # limitations under the License.
 
 # [START gae_flex_quickstart]
-from flask import Flask
+import json
+from flask import Flask, jsonify, request, redirect, session
+
+import requests
+
+import urllib
+
+import mysql.connector
+from mysql.connector.constants import ClientFlag
+
+
+"""
+try:
+    url = 'http://192.168.1.70:5000/input' #need to change
+    data = {'id':self.id, 'actions': self.timer.get_all_relay_actions()}
+    
+    req = requests.post(url, json=data)
+    json = req.json()
+    
+    if json['clear'] == 'True':
+        self.clear_actions()
+    
+    self.actions = json['actions']
+    self.set_actions(self.actions)
+    print('retrieved ', json)
+except:
+    print('server offline')
+"""
 
 
 app = Flask(__name__)
-
-
 @app.route('/')
-def hello():
-    """Return a friendly HTTP greeting."""
-    return 'Hello World!'
+def index():
+    return jsonify({'name': 'alice',
+                    'email': 'alice@outlook.com'})
 
+
+@app.route('/sql')
+def sql():
+    config = {
+    'user': 'root',
+    'password': 'cs411',
+    'host': '34.170.81.182',
+    'client_flags': [ClientFlag.SSL],
+    'ssl_ca': 'ssl/server-ca.pem',
+    'ssl_cert': 'ssl/client-cert.pem',
+    'ssl_key': 'ssl/client-key.pem'
+    }
+    config['database'] = 'testdb'
+    cnxn = mysql.connector.connect(**config)
+
+    cursor = cnxn.cursor()  # initialize connection cursor
+    cursor.execute('SELECT * FROM test') #sql query
+    for row in cursor.fetchall():
+        print(row)
+    cnxn.close()  # close connection 
+
+    # print('hi')
+    return "TEST IMPLMENTATION COMPLETE"
+    #sql here
+
+
+@app.route('/callback')
+def callback():
+    code = request.args['code']
+    token_url = 'https://accounts.spotify.com/api/token'
+    authorization = "Basic ZThjOWEwNzc4N2QyNDIyMWIzM2E4YmRiNzIyZGNmMzQ6NjY2MjU1MTE0MTU5NGE4YmFiNmY1NmU2ZDkzNTBlMTQ="
+    redirect_uri = "http://localhost:5000/callback"
+    
+    headers = {'Authorization': authorization, 
+             'Accept': 'application/json', 
+             'Content-Type': 'application/x-www-form-urlencoded'}
+    body = {'code': code, 
+            'redirect_uri': redirect_uri, 
+          'grant_type': 'authorization_code'}
+    
+    post_response = requests.post(token_url,headers=headers,data=body)
+    
+    session['token'] = post_response.json()['access_token']
+    session['refresh_token'] = post_response.json()['refresh_token']
+    
+    print('idc')
+    print(post_response.json())
+    
+    return redirect('/')
+
+@app.route('/authorize')
+def auth():
+    client_id = 'e8c9a07787d24221b33a8bdb722dcf34'
+    redirect_uri = 'http://localhost:5000/callback'
+    
+    scope = 'user-read-private user-read-email'
+    # see list of scopes: https://developer.spotify.com/documentation/general/guides/authorization/scopes/
+    
+    try:
+        url = 'https://accounts.spotify.com/authorize?'
+        params = {
+            'response_type': 'code', 
+            'client_id': client_id, 
+            'redirect_uri': redirect_uri,
+            'scope': scope,
+            #'state': state_key
+        }
+        
+        query_params = urllib.parse.urlencode(params)
+        return redirect(url + query_params)
+        
+    except:
+        print('Spotify login error')
+        return 'Spotify login error. oops!'
 
 if __name__ == '__main__':
     # This is used when running locally only. When deploying to Google App
