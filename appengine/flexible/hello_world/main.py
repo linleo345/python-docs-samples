@@ -24,24 +24,6 @@ import mysql.connector
 from mysql.connector.constants import ClientFlag
 
 
-"""
-try:
-    url = 'http://192.168.1.70:5000/input' #need to change
-    data = {'id':self.id, 'actions': self.timer.get_all_relay_actions()}
-    
-    req = requests.post(url, json=data)
-    json = req.json()
-    
-    if json['clear'] == 'True':
-        self.clear_actions()
-    
-    self.actions = json['actions']
-    self.set_actions(self.actions)
-    print('retrieved ', json)
-except:
-    print('server offline')
-"""
-
 
 app = Flask(__name__)
 @app.route('/')
@@ -73,6 +55,30 @@ def sql():
     # print('hi')
     return "TEST IMPLMENTATION COMPLETE"
     #sql here
+
+@app.route('/profile')
+def profile():
+    config = {
+    'user': 'root',
+    'password': 'cs411',
+    'host': '34.170.81.182',
+    'client_flags': [ClientFlag.SSL],
+    'ssl_ca': 'ssl/server-ca.pem',
+    'ssl_cert': 'ssl/client-cert.pem',
+    'ssl_key': 'ssl/client-key.pem'
+    }
+    
+    config['database'] = 'test'
+    cnxn = mysql.connector.connect(**config)
+    
+    cursor = cnxn.cursor()
+    cursor.execute('SELECT email FROM Profile where userName = \"' + request.args['userName'] + '\"')
+    
+    ret = ""
+    for row in cursor.fetchall():
+        ret += str(row)
+    cnxn.close()
+    return ret
 
 
 @app.route('/callback')
@@ -123,9 +129,4 @@ def auth():
     except:
         print('Spotify login error')
         return 'Spotify login error. oops!'
-
-if __name__ == '__main__':
-    # This is used when running locally only. When deploying to Google App
-    # Engine, a webserver process such as Gunicorn will serve the app.
-    app.run(host='127.0.0.1', port=8080, debug=True)
 # [END gae_flex_quickstart]
